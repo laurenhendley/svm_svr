@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     train_X, test_X, train_Y, test_Y = train_test_split(ds.data, ds.target, test_size = 0.3, random_state = 109)
 
-    Y_pred, classifier = model_generation(test_X,test_Y,train_X,train_Y)
+    Y_pred, classifier = model_generation(train_X, test_X, train_Y, test_Y)
 
     model_evaluation(test_Y, Y_pred)
 
