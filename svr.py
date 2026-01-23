@@ -23,7 +23,7 @@ from sklearn.linear_model import Ridge
 import matplotlib.pyplot as mpl
 import numpy as np
 
-
+# Inspecting model
 def model_exploring(ds):
     # Getting the features and labels of the dataset
     print(f"Features: {ds.feature_names}")
@@ -38,19 +38,22 @@ def model_exploring(ds):
     # Target set
     print(ds.target)
 
-
+# Generating/tuning/training the model
 def model_generation(train_X, test_X, train_Y):
+    # Getting search space for the parameters (3 parameters: C, gamma, epsilon)
     param_grid = {
         "svr__C": np.logspace(-1,4,100),
         "svr__gamma": np.logspace(-4,1,10),
         "svr__epsilon": [0.01, 0.1, 0.5, 1.0]
     }
 
+    # Scales features and applies SVR
     pipline = Pipeline([
         ("scaler", StandardScaler()),
         ("svr", SVR(kernel = "rbf"))
     ])
 
+    # Tries all parameter combinations, optimizes R2
     model = GridSearchCV(
         pipline,
         param_grid,
@@ -60,24 +63,29 @@ def model_generation(train_X, test_X, train_Y):
         refit=True
     )
 
+    # Apply log(1+y), stable variance
     train_y_log = np.log1p(train_Y)
 
     model.fit(train_X, train_y_log)
 
+    # Get best pipeline
     best_model = model.best_estimator_
 
+    # Predicts then converts back to OG scale
     y_pred_log = best_model.predict(test_X)
     y_pred = np.expm1(y_pred_log)
 
     return y_pred, best_model
 
+# Printing the accuracy
 def accuracy(y_test, y_pred):
     print("MSE: ", mean_squared_error(y_test, y_pred))
     print("MAE: ", mean_absolute_error(y_test, y_pred))
     print("R^2: ", r2_score(y_test, y_pred))
 
-
+# Plotting the results on a graph and trains model
 def plot_metrics(model, ds):
+    # Training model, compares against R2 validation
     train_size, train_score, val_score = learning_curve (
         model,
         ds.data,
@@ -99,21 +107,27 @@ def plot_metrics(model, ds):
     mpl.legend()
     mpl.show()
 
-
+# Main execution
 if __name__ == "__main__":
+    # Get dataset
     ds = datasets.load_diabetes()
 
+    # Train/test split
     train_X, test_X, train_Y, test_Y = train_test_split(ds.data, ds.target, test_size = 0.3, random_state = 42)
 
+    # Train SVR
     Y_pred, model = model_generation(train_X, test_X, train_Y)
 
+    # Get accuracy
     accuracy(test_Y, Y_pred)
 
+    # Baseline model for comparison
     ridge = Pipeline([
         ("scaler", StandardScaler()),
         ("ridge", Ridge(alpha=1.0))
     ])
 
+    # Measure generalization w/best pipeline
     scores = cross_val_score(
         model,
         ds.data,
@@ -125,5 +139,3 @@ if __name__ == "__main__":
     print("CV R2: ", scores.mean())
 
     plot_metrics(model, ds)
-
-
